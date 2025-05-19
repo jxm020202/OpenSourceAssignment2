@@ -1,31 +1,28 @@
-#!/bin/bash
-# Author: Shivam Sharma
-# Purpose: Count empty cells in each column for a file using given separator.
-# Usage: ./empty_cells <filename> <separator>
+#!/usr/bin/env bash
+# --------------------------------------------------------------------
+#  empty_cells:  count the empty cells in every column of the dataset
+#  Author: Shivam Sharma
+# --------------------------------------------------------------------
 
-if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 <filename> <separator>" > /dev/stderr
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <file> <separator>" >&2
     exit 1
 fi
 
-file="$1"
-sep="$2"
+FILE=$1
+SEP=$2
 
-gawk -F"$sep" '
-NR==1 {
-    for (i=1; i<=NF; i++) {
-        header[i] = $i
-        count[i] = 0
+awk -v FS="$SEP" '
+    NR==1 {
+        for (i=1;i<=NF;i++) hdr[i]=$i
+        next
     }
-    next
-}
-{
-    for (i=1; i<=NF; i++) {
-        if ($i == "") count[i]++
+    {
+        for (i=1;i<=NF;i++)
+            if ($i=="") cnt[i]++
     }
-}
-END {
-    for (i=1; i<=NF; i++) {
-        print header[i] ": " count[i]
+    END {
+        for (i=1;i<=length(hdr);i++)
+            printf "%s: %d\n", hdr[i], cnt[i]+0
     }
-}' "$file"
+' "$FILE"

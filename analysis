@@ -1,53 +1,67 @@
 #!/usr/bin/env bash
+###############################################################################
+# analysis – answer research questions on a cleaned TSV
 # Author: Shivam Sharma
+###############################################################################
 
-if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 <clean.tsv>" >&2; exit 1
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <clean.tsv>" >&2
+    exit 1
 fi
-file="$1"
 
-##############################################################################
-# 1. Most popular mechanics (column 13)
-awk -F'\t' '
-NR>1 && $13!="" {
-    n=split($13,a,/ *, */); for(i=1;i<=n;i++) mech[a[i]]++
-}
-END{
-    for(k in mech) if(mech[k]>max){max=mech[k]; name=k}
-    printf "The most popular game mechanics is %s found in %d games\n",name,max
-}' "$file"
+FILE="$1"
+TAB=$'\t'
 
-##############################################################################
-# 2. Most popular domain (column 14)
-awk -F'\t' '
-NR>1 && $14!="" {
-    n=split($14,a,/ *, */); for(i=1;i<=n;i++) dom[a[i]]++
-}
-END{
-    for(k in dom) if(dom[k]>max){max=dom[k]; name=k}
-    printf "The most game domain is %s found in %d games\n",name,max
-}' "$file"
+awk -v FS="$TAB" '
+    function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
 
-##############################################################################
-# 3. Pearson r: Year-Published (3) vs Rating (9)
-awk -F'\t' '
-NR>1 && $3!="" && $9!="" {
-    x=$3+0; y=$9+0
-    sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y; n++
-}
-END{
-    r=(n*sxy-sx*sy)/sqrt((n*sxx-sx*sx)*(n*syy-sy*sy))
-    printf "The correlation between the year of publication and the average rating is %.3f\n",r
-}' "$file"
+    NR==1 {
+        for (i = 1; i <= NF; i++) {
+            if      ($i == "Year Published")      cYear = i
+            else if ($i == "Rating Average")      cRate = i
+            else if ($i == "Complexity Average")  cComp = i
+            else if ($i == "Mechanics")           cMech = i
+            else if ($i == "Domains")             cDom  = i
+        }
+        next
+    }
 
-##############################################################################
-# 4. Pearson r: Complexity (11) vs Rating (9)
-awk -F'\t' '
-NR>1 && $11!="" && $9!="" {
-    x=$11+0; y=$9+0
-    sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y; n++
-}
-END{
-    r=(n*sxy-sx*sy)/sqrt((n*sxx-sx*sx)*(n*syy-sy*sy))
-    printf "The correlation between the complexity of a game and its average rating is %.3f\n",r
-}' "$file"
+    {
+        # count mechanics
+        n = split($cMech, tmp, ",")
+        for (i = 1; i <= n; i++) {
+            v = trim(tmp[i])
+            if (v != "") mech[v]++
+        }
+        # count domains
+        n = split($cDom, tmp, ",")
+        for (i = 1; i <= n; i++) {
+            v = trim(tmp[i])
+            if (v != "") dom[v]++
+        }
+
+        # accumulate for correlations
+        yr   = $cYear + 0
+        rate = $cRate + 0
+        comp = $cComp + 0
+
+        nY++; sumYr += yr; sumRate += rate; sumYr2 += yr*yr; sumRate2 += rate*rate; sumYrRate += yr*rate
+        nC++; sumComp += comp; sumComp2 += comp*comp; sumCompRate += comp*rate
+    }
+
+    END {
+        # most popular
+        for (m in mech) if (mech[m] > mmax) { mmax = mech[m]; bestM = m }
+        for (d in dom ) if (dom [d] > dmax) { dmax = dom [d]; bestD = d }
+
+        printf "The most popular game mechanics is %s found in %d games\n", bestM, mmax
+        printf "The most popular game domain is %s found in %d games\n", bestD, dmax
+
+        # Pearson correlations
+        rYr   = (nY*sumYrRate   - sumYr*sumRate)   / sqrt((nY*sumYr2   - sumYr^2)   *(nY*sumRate2 - sumRate^2))
+        rComp = (nC*sumCompRate - sumComp*sumRate) / sqrt((nC*sumComp2 - sumComp^2)*(nC*sumRate2 - sumRate^2))
+
+        printf "The correlation between the year of publication and the average rating is %.3f\n",      rYr
+        printf "The correlation between the complexity of a game and its average rating is %.3f\n", rComp
+    }
+' "$FILE"
