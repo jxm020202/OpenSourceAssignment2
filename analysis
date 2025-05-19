@@ -2,6 +2,7 @@
 ###############################################################################
 # analysis – answer research questions on a cleaned TSV
 # Author: Shivam Sharma
+# This script outputs the most popular mechanic and domain, and calculates two Pearson correlations as per assignment spec
 ###############################################################################
 
 if [ "$#" -ne 1 ]; then

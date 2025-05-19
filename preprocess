@@ -2,6 +2,12 @@
 ###############################################################################
 # preprocess – clean a raw BGG “;” spreadsheet file into TSV
 # Author: Shivam Sharma
+# This script:
+#   - Fills empty IDs with new unique values
+#   - Converts semicolon to tab
+#   - Converts MS to Unix line endings
+#   - Changes , to . for floats
+#   - Removes non-ASCII
 ###############################################################################
 
 if [ "$#" -ne 1 ]; then
