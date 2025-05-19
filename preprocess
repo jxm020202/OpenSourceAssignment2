@@ -1,0 +1,41 @@
+#!/bin/bash
+# Author: Shivam Sharma
+# Purpose: Clean BGG dataset as per assignment specs.
+# Usage: ./preprocess <inputfile>
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <inputfile>" > /dev/stderr
+    exit 1
+fi
+
+file="$1"
+tmp1="__tmp1.txt"
+tmp2="__tmp2.txt"
+tmp3="__tmp3.txt"
+
+# 1. Convert Windows to Unix line endings
+tr -d '\r' < "$file" > "$tmp1"
+
+# 2. Replace semicolon with TAB
+tr ';' '\t' < "$tmp1" > "$tmp2"
+
+# 3. Change comma decimal to period
+sed 's/,/./g' "$tmp2" > "$tmp3"
+
+# 4. Remove non-ASCII chars
+tr -cd '\11\12\15\40-\176' < "$tmp3" > "$tmp1"
+
+# 5. Replace empty IDs with new unique IDs
+maxid=$(awk -F'\t' 'NR>1 && $1!="" && $1+0==$1 {if ($1>max) max=$1} END{print max}' "$tmp1")
+
+awk -F'\t' -v maxid="$maxid" '
+NR==1 {print; next}
+{
+    if ($1 == "") {
+        maxid++
+        $1 = maxid
+    }
+    print $0
+}' OFS='\t' "$tmp1"
+
+rm -f "$tmp1" "$tmp2" "$tmp3"
